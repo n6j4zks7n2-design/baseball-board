@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>草野球マッチングボード</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --green: #1b7a41;
+    --green-dark: #125d30;
+    --bg: #f2f5f0;
+    --card: #ffffff;
+    --text: #1f2a20;
+    --muted: #6b7a6d;
+    --border: #dbe3da;
+    --accent: #e8f4ec;
+    --orange: #b0540e;
+    --blue: #2b4ea8;
+    --red: #c0392b;
+    --amber: #b8860b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding-bottom: 40px;
+  }
+  header {
+    background: var(--green);
+    color: #fff;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  header .logo {
+    width: 40px; height: 40px;
+    background: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 17px; font-weight: 700; }
+  header p { font-size: 11px; opacity: .85; }
+  .wrap { max-width: 640px; margin: 0 auto; padding: 0 14px; }
+
+  .mode-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 9px;
+    border-radius: 6px;
+    margin: 12px 0 0;
+  }
+  .mode-tag.demo { background: #fff4e0; color: var(--amber); }
+  .mode-tag.live { background: var(--accent); color: var(--green-dark); }
+
+  /* 認証バー */
+  .authbar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .authbar .who { flex: 1; font-size: 14px; min-width: 0; }
+  .authbar .who .email { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn-sm {
+    border: 1px solid var(--green);
+    background: #fff;
+    color: var(--green);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn-sm.solid { background: var(--green); color: #fff; }
+  .btn-sm.danger { border-color: var(--red); color: var(--red); }
+
+  .authform {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-top: 10px;
+  }
+  .authform h3 { font-size: 15px; margin-bottom: 12px; }
+  .authform .switch { font-size: 13px; color: var(--green); cursor: pointer; margin-top: 10px; }
+
+  .tabs { display: flex; gap: 10px; margin: 14px 0 4px; }
+  .tab {
+    flex: 1;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--muted);
+    padding: 11px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+  }
+  .tab.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+  .hero { background: var(--green); color: #fff; padding: 20px 16px; border-radius: 0 0 14px 14px; }
+  .hero h2 { font-size: 20px; margin-bottom: 4px; }
+  .hero p { font-size: 13px; opacity: .9; }
+
+  .btn-primary {
+    background: #ffb400;
+    color: #332000;
+    border: none;
+    font-size: 15px;
+    font-weight: 700;
+    padding: 13px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 2px 6px rgba(0,0,0,.15);
+  }
+  .btn-primary:active { transform: translateY(1px); }
+  .btn-primary.mt { margin-top: 14px; }
+  .btn-primary:disabled { background: #d8d8d8; color: #888; cursor: not-allowed; box-shadow: none; }
+
+  .filters { padding: 14px 0 6px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .chip.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .selects { display: flex; gap: 8px; flex-wrap: wrap; }
+  .selects select {
+    flex: 1; min-width: 100px;
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 8px;
+    padding: 8px 6px;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .form-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin: 14px 0;
+  }
+  .form-card h3 { font-size: 15px; margin-bottom: 12px; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field select, .field textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    color: var(--text);
+  }
+  .field textarea { min-height: 72px; resize: vertical; }
+  .row2 { display: flex; gap: 8px; }
+  .row2 .field { flex: 1; }
+
+  .post-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .post {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .post .top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--green-dark);
+    white-space: nowrap;
+  }
+  .badge.opponent { background: #e8efff; color: var(--blue); }
+  .badge.member { background: #fff0e6; color: var(--orange); }
+  .badge.commit { background: #f0ecff; color: #5b3fa8; }
+  .post .team { font-weight: 700; font-size: 15px; }
+  .post .meta { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .post .meta span { white-space: nowrap; }
+  .specs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .spec {
+    font-size: 12px;
+    background: #f5f8f5;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px 9px;
+    color: var(--text);
+  }
+  .spec b { color: var(--green-dark); }
+  .post .comment { font-size: 13px; margin-top: 10px; color: var(--text); }
+  .post .foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    gap: 8px;
+  }
+  .post .when { font-size: 11px; color: var(--muted); }
+  .post .actions { display: flex; gap: 6px; }
+  .link-btn {
+    border: none; background: none;
+    font-size: 12px; cursor: pointer;
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .link-btn.report { color: var(--muted); }
+  .link-btn.report:hover { color: var(--red); background: #fdf0ee; }
+  .link-btn.del { color: var(--red); }
+  .link-btn.del:hover { background: #fdf0ee; }
+  .author { font-size: 11px; color: var(--muted); }
+
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; font-size: 14px; }
+  .count { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .notice {
+    background: #fff4e0;
+    border: 1px solid #f0d9a8;
+    color: #7a5b12;
+    border-radius: 10px;
+    font-size: 13px;
+    padding: 10px 12px;
+    margin-top: 10px;
+  }
+
+  .player-list { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+  .player {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .player .avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+  .player .info { flex: 1; }
+  .player .name { font-weight: 700; font-size: 15px; }
+  .player .sub { font-size: 12px; color: var(--muted); }
+  .player .pos-badge {
+    font-size: 12px;
+    font-weight: 700;
+    background: var(--green);
+    color: #fff;
+    border-radius: 999px;
+    padding: 4px 12px;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">⚾</div>
+  <div>
+    <h1>草野球マッチングボード</h1>
+    <p>助っ人・対戦相手・メンバーを気軽に募集</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div>
+    <span class="mode-tag demo" id="modeTag">デモモード（認証フロー確認用）</span>
+  </div>
+
+  <!-- 認証バー -->
+  <div class="authbar" id="authBar"></div>
+
+  <!-- 認証フォーム -->
+  <div class="authform" id="authForm" style="display:none;">
+    <h3 id="authTitle">ログイン</h3>
+    <div class="field">
+      <label>メールアドレス</label>
+      <input id="authEmail" type="email" placeholder="you@example.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>パスワード（6文字以上）</label>
+      <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="authSubmit">ログインする</button>
+    <div class="switch" id="authSwitch">アカウントがない方はこちら（新規登録）</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" id="tabBoard">募集ボード</button>
+    <button class="tab" id="tabPlayers">プレイヤー登録</button>
+  </div>
+
+  <!-- ================= 募集ボード ================= -->
+  <section id="boardSection">
+    <div class="hero">
+      <h2>試合、あと1人足りない。</h2>
+      <p>求める経験・ポジション・費用を明記して、サクッと募集。</p>
+      <button class="btn-primary mt" id="toggleForm">＋ 募集を投稿する</button>
+    </div>
+
+    <div class="form-card" id="postForm" style="display:none;">
+      <h3>募集を書く</h3>
+      <div class="row2">
+        <div class="field">
+          <label>種別</label>
+          <select id="inType">
+            <option value="helper">助っ人募集</option>
+            <option value="opponent">対戦相手募集</option>
+            <option value="member">メンバー募集</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>チーム名</label>
+          <input id="inTeam" placeholder="例：高砂スパローズ">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>募集ポジション</label>
+          <select id="inPosition"></select>
+        </div>
+        <div class="field">
+          <label>求める最終野球経験</label>
+          <select id="inExp"></select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>チームのレベル・目標</label>
+          <select id="inGoal"></select>
+        </div>
+        <div class="field">
+          <label>費用</label>
+          <input id="inCost" placeholder="例：1回500円／年会費なし">
+        </div>
+      </div>
+      <div class="field">
+        <label>都道府県</label>
+        <select id="inArea"></select>
+      </div>
+      <div class="field">
+        <label>日時</label>
+        <input id="inDate" placeholder="例：6/15(日) 9:00〜11:00">
+      </div>
+      <div class="field">
+        <label>コメント</label>
+        <textarea id="inComment" placeholder="例：投手1名募集中！経験不問、楽しくやりたい方歓迎。"></textarea>
+      </div>
+      <button class="btn-primary" id="submitPost">投稿する</button>
+    </div>
+
+    <div class="filters">
+      <div class="chips" id="typeChips">
+        <button class="chip active" data-type="all">すべて</button>
+        <button class="chip" data-type="helper">助っ人</button>
+        <button class="chip" data-type="opponent">対戦相手</button>
+        <button class="chip" data-type="member">メンバー</button>
+      </div>
+      <div class="selects">
+        <select id="filterArea"><option value="all">全地域</option></select>
+        <select id="filterGoal"><option value="all">全レベル・目標</option></select>
+        <select id="filterPos"><option value="all">全ポジション</option></select>
+      </div>
+    </div>
+
+    <div class="post-list" id="postList"></div>
+    <div class="count" id="count"></div>
+  </section>
+
+  <!-- ================= プレイヤー登録 ================= -->
+  <section id="playerSection" style="display:none;">
+    <div class="form-card" style="margin-top:14px;">
+      <h3>プレイヤーとして登録（応募サイド）</h3>
+      <div class="field">
+        <label>ニックネーム</label>
+        <input id="pName" placeholder="例：たける">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>最終野球経験</label>
+          <select id="pExp"></select>
+        </div>
+        <div class="field">
+          <label>ポジション</label>
+          <select id="pPos"></select>
+        </div>
+      </div>
+      <button class="btn-primary" id="submitPlayer">登録する</button>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;">
+        登録すると、自分の経験・ポジションがチーム側から見えるようになります。
+      </p>
+    </div>
+    <div class="player-list" id="playerList"></div>
+    <div class="count" id="playerCount"></div>
+  </section>
+</div>
+
+<script>
+// ============================================================
+// 設定：ここにSupabaseの値を入れると「本番モード」に切り替わります
+//   SUPABASE_URL      例: "https://xxxxxxxx.supabase.co"
+//   SUPABASE_ANON_KEY 例: "eyJhbGciOiJIUzI1NiIs..."
+// ============================================================
+const SUPABASE_URL = "";
+const SUPABASE_ANON_KEY = "";
+
+// ---------- 定数 ----------
+const PREFECTURES = [
+  "北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県",
+  "茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県",
+  "新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県",
+  "静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県",
+  "奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県",
+  "徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県",
+  "熊本県","大分県","宮崎県","鹿児島県","沖縄県"
+];
+const POSITIONS = ["投手","捕手","内野","外野","どこでも"];
+const EXP = ["未経験","中学","高校","大学","社会人"];
+const GOALS = ["初心者歓迎","エンジョイ","バランス","ガチ志向","大会優勝目標"];
+const TYPE_LABEL = { helper: "助っ人募集", opponent: "対戦相手募集", member: "メンバー募集" };
+
+// ---------- Supabase初期化 ----------
+let sb = null;
+if (typeof supabase !== "undefined" && SUPABASE_URL && SUPABASE_ANON_KEY) {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+const LIVE = !!sb;
+
+// ============================================================
+// デモ用バックエンド（ローカル。本物の認証ではありません）
+// 本番はSupabase（LIVEモード）で動作します。
+// ============================================================
+const DK = {
+  USERS: "demo_users", SESSION: "demo_session",
+  POSTS: "demo_posts", PLAYERS: "demo_players", REPORTS: "demo_reports"
+};
+function dLoad(key, seed) {
+  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : seed; }
+  catch (e) { return seed; }
+}
+function dSave(key, v) { localStorage.setItem(key, JSON.stringify(v)); }
+function uid() { return (crypto.randomUUID ? crypto.randomUUID() : "id-" + Date.now() + "-" + Math.random().toString(36).slice(2)); }
+// デモ用ハッシュ（実際のパスワード保存には非対応。本番はSupabaseが安全に管理）
+function dHash(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+  return "h" + h.toString(36);
+}
+
+const DEMO_POSTS_SEED = [
+  { id: "seed1", userId: "seed", author: "demo@example.com", type: "opponent", team: "高砂スパローズ", position: "どこでも", exp: "高校", goal: "バランス",
+    cost: "1試合2,000円(チームで負担)", area: "兵庫県", date: "6/15(日) 9:00〜11:00",
+    comment: "練習試合の対戦相手を募集しています。グラウンドはこちらで確保済みです。", at: "2時間前", ts: Date.now() - 7200000 },
+  { id: "seed2", userId: "seed", author: "demo@example.com", type: "helper", team: "横浜ホエールズ", position: "外野", exp: "未経験", goal: "初心者歓迎",
+    cost: "無料（道具貸出可）", area: "神奈川県", date: "6/14(土) 13:00〜15:00",
+    comment: "外野手1名募集中！未経験OK、楽しんでプレーしたい方歓迎。", at: "5時間前", ts: Date.now() - 18000000 },
+  { id: "seed3", userId: "seed", author: "demo@example.com", type: "member", team: "府中ファイターズ", position: "内野", exp: "中学", goal: "ガチ志向",
+    cost: "年会費3,000円", area: "東京都", date: "通年募集",
+    comment: "メンバー募集！中学野球経験者歓迎、週1練習＋月2試合のガチチームです。", at: "1日前", ts: Date.now() - 86400000 },
+  { id: "seed4", userId: "seed", author: "demo@example.com", type: "opponent", team: "福岡ドリームズ", position: "どこでも", exp: "社会人", goal: "大会優勝目標",
+    cost: "球場代折半", area: "福岡県", date: "6/21(土) 10:00〜12:00",
+    comment: "しっかりしたチームとの対戦希望です。よろしくお願いします。", at: "1日前", ts: Date.now() - 86400000 }
+];
+const DEMO_PLAYERS_SEED = [
+  { id: "p1", userId: "seed", name: "たける", exp: "高校", position: "投手", at: "2日前" },
+  { id: "p2", userId: "seed", name: "ヒロ", exp: "未経験", position: "外野", at: "3日前" },
+  { id: "p3", userId: "seed", name: "ゆうじ", exp: "中学", position: "内野", at: "5日前" }
+];
+
+// ============================================================
+// データAPI（デモ/本番で同じインターフェース）
+// ============================================================
+const api = {
+  async getSession() {
+    if (LIVE) {
+      const { data } = await sb.auth.getSession();
+      return data.session ? data.session.user : null;
+    }
+    const sid = dLoad(DK.SESSION, null);
+    if (!sid) return null;
+    const users = dLoad(DK.USERS, {});
+    const u = Object.values(users).find(x => x.id === sid);
+    return u ? { id: u.id, email: u.email } : null;
+  },
+
+  async signUp(email, pass) {
+    email = email.trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error("メールアドレスの形式が正しくありません。");
+    if (pass.length < 6) throw new Error("パスワードは6文字以上にしてください。");
+    if (LIVE) {
+      const { error } = await sb.auth.signUp({ email, password: pass });
+      if (error) throw new Error(error.message);
+      return { needConfirm: true };
+    }
+    const users = dLoad(DK.USERS, {});
+    if (users[email]) throw new Error("このメールアドレスは既に登録されています。");
+    const id = uid();
+    users[email] = { id, email, pass: dHash(pass) };
+    dSave(DK.USERS, users);
+    dSave(DK.SESSION, id);
+    return { needConfirm: false };
+  },
+
+  async signIn(email, pass) {
+    email = email.trim().toLowerCase();
+    if (LIVE) {
+      const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+      if (error) throw new Error("ログインに失敗しました（メール/パスワードを確認）。");
+      return true;
+    }
+    const users = dLoad(DK.USERS, {});
+    const u = users[email];
+    if (!u || u.pass !== dHash(pass)) throw new Error("ログインに失敗しました（メール/パスワードを確認）。");
+    dSave(DK.SESSION, u.id);
+    return true;
+  },
+
+  async signOut() {
+    if (LIVE) { await sb.auth.signOut(); return; }
+    localStorage.removeItem(DK.SESSION);
+  },
+
+  async listPosts() {
+    if (LIVE) {
+      const { data, error } = await sb.from("posts").select("*").order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data.map(r => ({
+        id: r.id, userId: r.user_id, author: r.author_email, type: r.type, team: r.team,
+        position: r.position, exp: r.exp, goal: r.goal, cost: r.cost, area: r.area,
+        date: r.date, comment: r.comment, at: r.created_at
+      }));
+    }
+    return dLoad(DK.POSTS, DEMO_POSTS_SEED);
+  },
+
+  async createPost(data) {
+    const session = await this.getSession();
+    if (!session) throw new Error("投稿にはログインが必要です。");
+    if (LIVE) {
+      const row = {
+        user_id: session.id, author_email: session.email, type: data.type, team: data.team,
+        position: data.position, exp: data.exp, goal: data.goal, cost: data.cost,
+        area: data.area, date: data.date, comment: data.comment
+      };
+      const { error } = await sb.from("posts").insert(row);
+      if (error) throw new Error(error.message);
+      return;
+    }
+    const posts = dLoad(DK.POSTS, DEMO_POSTS_SEED);
+    posts.unshift({
+      id: uid(), userId: session.id, author: session.email, ...data, at: "たった今", ts: Date.now()
+    });
+    dSave(DK.POSTS, posts);
+  },
+
+  async deletePost(id) {
+    const session = await this.getSession();
+    if (!session) throw new Error("削除にはログインが必要です。");
+    if (LIVE) {
+      // 本人のみ削除できるようRLSでも担保します
+      const { error } = await sb.from("posts").delete().eq("id", id).eq("user_id", session.id);
+      if (error) throw new Error(error.message);
+      return;
+    }
+    let posts = dLoad(DK.POSTS, DEMO_POSTS_SEED);
+    const target = posts.find(p => p.id === id);
+    if (!target) return;
+    if (target.userId !== session.id) throw new Error("自分の投稿のみ削除できます。");
+    dSave(DK.POSTS, posts.filter(p => p.id !== id));
+  },
+
+  async reportPost(id, reason) {
+    const session = await this.getSession();
+    if (!session) throw new Error("通報にはログインが必要です。");
+    if (LIVE) {
+      const { error } = await sb.from("reports").insert({ post_id: id, reporter_id: session.id, reason });
+      if (error) throw new Error(error.message);
+      return;
+    }
+    const reports = dLoad(DK.REPORTS, []);
+    reports.push({ id: uid(), postId: id, reporterId: session.id, reason, ts: Date.now() });
+    dSave(DK.REPORTS, reports);
+  },
+
+  async listPlayers() {
+    if (LIVE) {
+      const { data, error } = await sb.from("players").select("*").order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return data.map(r => ({ id: r.id, name: r.name, exp: r.exp, position: r.position, at: r.created_at }));
+    }
+    return dLoad(DK.PLAYERS, DEMO_PLAYERS_SEED);
+  },
+
+  async createPlayer(data) {
+    const session = await this.getSession();
+    if (!session) throw new Error("登録にはログインが必要です。");
+    if (LIVE) {
+      const { error } = await sb.from("players").insert({ user_id: session.id, name: data.name, exp: data.exp, position: data.position });
+      if (error) throw new Error(error.message);
+      return;
+    }
+    const players = dLoad(DK.PLAYERS, DEMO_PLAYERS_SEED);
+    players.unshift({ id: uid(), userId: session.id, ...data, at: "たった今" });
+    dSave(DK.PLAYERS, players);
+  }
+};
+
+// ---------- 状態 ----------
+let currentUser = null;
+let posts = [];
+let players = [];
+let authMode = "login"; // login | signup
+let currentType = "all";
+
+const $ = id => document.getElementById(id);
+
+function escapeHtml(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+function fmtRel(ts) {
+  if (!ts) return "";
+  const diff = Date.now() - ts;
+  if (diff < 60000) return "たった今";
+  if (diff < 3600000) return Math.floor(diff / 60000) + "分前";
+  if (diff < 86400000) return Math.floor(diff / 3600000) + "時間前";
+  return Math.floor(diff / 86400000) + "日前";
+}
+function fillSelect(el, items, placeholder) {
+  el.innerHTML = "";
+  if (placeholder) {
+    const o = document.createElement("option");
+    o.value = "all"; o.textContent = placeholder;
+    el.appendChild(o);
+  }
+  items.forEach(v => {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = v;
+    el.appendChild(o);
+  });
+}
+
+// ---------- 認証UI ----------
+function renderAuthBar() {
+  const bar = $("authBar");
+  if (currentUser) {
+    bar.innerHTML = `
+      <span class="who">
+        👤 <b>${escapeHtml(currentUser.email)}</b>
+        <div class="email">ログイン中</div>
+      </span>
+      <button class="btn-sm danger" id="btnLogout">ログアウト</button>
+    `;
+    $("btnLogout").addEventListener("click", async () => {
+      await api.signOut();
+      currentUser = null;
+      renderAuthBar();
+      renderBoard();
+      renderPlayers();
+    });
+  } else {
+    bar.innerHTML = `
+      <span class="who">🔒 投稿・応募にはログインが必要です。</span>
+      <button class="btn-sm solid" id="btnLogin">ログイン / 新規登録</button>
+    `;
+    $("btnLogin").addEventListener("click", () => {
+      const f = $("authForm");
+      f.style.display = f.style.display === "none" ? "block" : "none";
+    });
+  }
+}
+
+function setAuthMode(mode) {
+  authMode = mode;
+  $("authTitle").textContent = mode === "login" ? "ログイン" : "新規登録";
+  $("authSubmit").textContent = mode === "login" ? "ログインする" : "登録する";
+  $("authSwitch").textContent = mode === "login"
+    ? "アカウントがない方はこちら（新規登録）"
+    : "すでにアカウントをお持ちの方はこちら（ログイン）";
+}
+$("authSwitch").addEventListener("click", () => {
+  setAuthMode(authMode === "login" ? "signup" : "login");
+});
+
+$("authSubmit").addEventListener("click", async () => {
+  const email = $("authEmail").value;
+  const pass = $("authPass").value;
+  try {
+    if (authMode === "signup") {
+      const r = await api.signUp(email, pass);
+      if (r.needConfirm) {
+        alert("確認メールを送信しました。メール内のリンクをクリックして認証してください。");
+        return;
+      }
+      currentUser = await api.getSession();
+      $("authForm").style.display = "none";
+      $("authEmail").value = ""; $("authPass").value = "";
+      renderAuthBar();
+      return;
+    }
+    await api.signIn(email, pass);
+    currentUser = await api.getSession();
+    $("authForm").style.display = "none";
+    $("authEmail").value = ""; $("authPass").value = "";
+    renderAuthBar();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// ---------- 募集ボード ----------
+function badgeClass(type) {
+  return type === "opponent" ? "opponent" : type === "member" ? "member" : "";
+}
+
+function renderBoard() {
+  const area = $("filterArea").value;
+  const goal = $("filterGoal").value;
+  const pos = $("filterPos").value;
+
+  const filtered = posts.filter(p => {
+    if (currentType !== "all" && p.type !== currentType) return false;
+    if (area !== "all" && p.area !== area) return false;
+    if (goal !== "all" && p.goal !== goal) return false;
+    if (pos !== "all" && p.position !== pos && p.position !== "どこでも") return false;
+    return true;
+  });
+
+  const list = $("postList");
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">該当する募集がありません。<br>「募集を投稿する」から始めましょう！</div>';
+  } else {
+    list.innerHTML = filtered.map(p => {
+      const isOwner = currentUser && p.userId === currentUser.id;
+      return `
+      <div class="post">
+        <div class="top">
+          <span class="badge ${badgeClass(p.type)}">${TYPE_LABEL[p.type]}</span>
+          <span class="badge commit">${escapeHtml(p.goal)}</span>
+          <span class="team">${escapeHtml(p.team)}</span>
+        </div>
+        <div class="meta">
+          <span>📍 ${escapeHtml(p.area)}</span>
+          <span>📅 ${escapeHtml(p.date)}</span>
+        </div>
+        <div class="specs">
+          <span class="spec">🎯 ポジション <b>${escapeHtml(p.position)}</b></span>
+          <span class="spec">🎓 求める経験 <b>${escapeHtml(p.exp)}</b></span>
+          <span class="spec">💰 ${escapeHtml(p.cost)}</span>
+        </div>
+        <div class="comment">${escapeHtml(p.comment)}</div>
+        <div class="foot">
+          <span class="when">${escapeHtml(fmtRel(p.ts) || p.at)}</span>
+          <div class="actions">
+            ${!isOwner && currentUser ? `<button class="link-btn report" data-report="${p.id}">通報</button>` : ""}
+            ${isOwner ? `<button class="link-btn del" data-del="${p.id}">削除</button>` : ""}
+          </div>
+        </div>
+      </div>`;
+    }).join("");
+  }
+  $("count").textContent = `表示：${filtered.length}件 / 全${posts.length}件`;
+
+  // 削除
+  list.querySelectorAll("[data-del]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("この投稿を削除しますか？")) return;
+      try {
+        await api.deletePost(btn.dataset.del);
+        await reload();
+      } catch (err) { alert(err.message); }
+    });
+  });
+  // 通報
+  list.querySelectorAll("[data-report]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const reason = prompt("通報理由を教えてください（不適切・いたずら等）", "不適切な内容");
+      if (reason === null) return;
+      try {
+        await api.reportPost(btn.dataset.report, reason || "不適切な内容");
+        alert("通報を受け付けました。運営が確認します。");
+      } catch (err) { alert(err.message); }
+    });
+  });
+}
+
+// ---------- プレイヤー ----------
+function renderPlayers() {
+  const list = $("playerList");
+  if (players.length === 0) {
+    list.innerHTML = '<div class="empty">まだプレイヤーがいません。<br>上のフォームから登録してみましょう。</div>';
+  } else {
+    list.innerHTML = players.map(p => `
+      <div class="player">
+        <div class="avatar">🧢</div>
+        <div class="info">
+          <div class="name">${escapeHtml(p.name)}</div>
+          <div class="sub">最終経験：${escapeHtml(p.exp)} ／ ${escapeHtml(fmtRel(p.ts) || p.at)}</div>
+        </div>
+        <span class="pos-badge">${escapeHtml(p.position)}</span>
+      </div>
+    `).join("");
+  }
+  $("playerCount").textContent = `登録プレイヤー：${players.length}人`;
+}
+
+// ---------- 連投制限 ----------
+function checkRateLimit() {
+  const t = parseInt(localStorage.getItem("last_post_at") || "0", 10);
+  const elapsed = Date.now() - t;
+  if (elapsed < 15000) return Math.ceil((15000 - elapsed) / 1000);
+  return 0;
+}
+
+// ---------- 投稿 ----------
+$("toggleForm").addEventListener("click", () => {
+  if (!currentUser) {
+    alert("投稿にはログインが必要です。上からログインしてください。");
+    $("authForm").style.display = "block";
+    return;
+  }
+  const f = $("postForm");
+  f.style.display = f.style.display === "none" ? "block" : "none";
+});
+
+$("submitPost").addEventListener("click", async () => {
+  const team = $("inTeam").value.trim();
+  const comment = $("inComment").value.trim();
+  if (!team || !comment) { alert("チーム名とコメントを入力してください。"); return; }
+  const wait = checkRateLimit();
+  if (wait > 0) { alert(`連投を防ぐため、あと${wait}秒待ってから投稿できます。`); return; }
+  const data = {
+    type: $("inType").value,
+    team,
+    position: $("inPosition").value,
+    exp: $("inExp").value,
+    goal: $("inGoal").value,
+    cost: $("inCost").value.trim() || "応相談",
+    area: $("inArea").value,
+    date: $("inDate").value.trim() || "未定",
+    comment
+  };
+  try {
+    await api.createPost(data);
+    localStorage.setItem("last_post_at", String(Date.now()));
+    $("postForm").style.display = "none";
+    ["inTeam","inCost","inDate","inComment"].forEach(id => $(id).value = "");
+    currentType = "all";
+    document.querySelectorAll("#typeChips .chip").forEach(c => c.classList.toggle("active", c.dataset.type === "all"));
+    await reload();
+  } catch (err) { alert(err.message); }
+});
+
+// ---------- プレイヤー登録 ----------
+$("submitPlayer").addEventListener("click", async () => {
+  if (!currentUser) {
+    alert("登録にはログインが必要です。上からログインしてください。");
+    $("authForm").style.display = "block";
+    return;
+  }
+  const name = $("pName").value.trim();
+  if (!name) { alert("ニックネームを入力してください。"); return; }
+  try {
+    await api.createPlayer({ name, exp: $("pExp").value, position: $("pPos").value });
+    $("pName").value = "";
+    await reload();
+  } catch (err) { alert(err.message); }
+});
+
+// ---------- タブ----------
+function switchTab(which) {
+  const isBoard = which === "board";
+  $("tabBoard").classList.toggle("active", isBoard);
+  $("tabPlayers").classList.toggle("active", !isBoard);
+  $("boardSection").style.display = isBoard ? "block" : "none";
+  $("playerSection").style.display = isBoard ? "none" : "block";
+}
+$("tabBoard").addEventListener("click", () => switchTab("board"));
+$("tabPlayers").addEventListener("click", () => switchTab("players"));
+
+// ---------- フィルタ ----------
+$("typeChips").addEventListener("click", (e) => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  currentType = chip.dataset.type;
+  document.querySelectorAll("#typeChips .chip").forEach(c => c.classList.toggle("active", c === chip));
+  renderBoard();
+});
+$("filterArea").addEventListener("change", renderBoard);
+$("filterGoal").addEventListener("change", renderBoard);
+$("filterPos").addEventListener("change", renderBoard);
+
+// ---------- 初期化 ----------
+async function reload() {
+  posts = await api.listPosts();
+  players = await api.listPlayers();
+  renderBoard();
+  renderPlayers();
+}
+
+fillSelect($("inPosition"), POSITIONS, null);
+fillSelect($("inExp"), EXP, null);
+fillSelect($("inGoal"), GOALS, null);
+fillSelect($("inArea"), PREFECTURES, null);
+fillSelect($("filterArea"), PREFECTURES, "全地域");
+fillSelect($("filterGoal"), GOALS, "全レベル・目標");
+fillSelect($("filterPos"), POSITIONS, "全ポジション");
+fillSelect($("pExp"), EXP, null);
+fillSelect($("pPos"), POSITIONS, null);
+
+(async function init() {
+  const tag = $("modeTag");
+  if (LIVE) {
+    tag.textContent = "本番モード（Supabase接続中）";
+    tag.className = "mode-tag live";
+  } else {
+    tag.textContent = "デモモード（認証フロー確認用・本物の認証ではありません）";
+    tag.className = "mode-tag demo";
+  }
+  setAuthMode("login");
+  currentUser = await api.getSession();
+  renderAuthBar();
+  await reload();
+})();
+</script>
+</body>
+</html>
